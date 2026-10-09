@@ -118,3 +118,6 @@ set_tests_properties(ios_turbo_tests PROPERTIES TIMEOUT 30)
 
 add_test(NAME startup_stability_tests COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/StartupStabilityTests.py ${CMAKE_CXX_COMPILER})
 set_tests_properties(startup_stability_tests PROPERTIES TIMEOUT 30)
+
+add_test(NAME renderer_dispatch_tests COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/RendererDispatchTests.py ${CMAKE_CXX_COMPILER})
+set_tests_properties(renderer_dispatch_tests PROPERTIES TIMEOUT 30)

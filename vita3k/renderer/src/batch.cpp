@@ -35,6 +35,7 @@
 #include <util/log.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <exception>
 #include <memory>
@@ -85,28 +86,39 @@ static renderer::SyncWaitResult wait_cmd(MemState &mem, CommandList &command_lis
 static void process_batch(renderer::State &state, const FeatureState &features, MemState &mem, Config &config, CommandList &command_list) {
     using CommandHandlerFunc = decltype(cmd_handle_set_context);
 
-    const static std::map<CommandOpcode, CommandHandlerFunc *> handlers = {
-        { CommandOpcode::SetContext, cmd_handle_set_context },
-        { CommandOpcode::SyncSurfaceData, cmd_handle_sync_surface_data },
-        { CommandOpcode::MidSceneFlush, cmd_handle_mid_scene_flush },
-        { CommandOpcode::CreateContext, cmd_handle_create_context },
-        { CommandOpcode::CreateRenderTarget, cmd_handle_create_render_target },
-        { CommandOpcode::MemoryMap, cmd_handle_memory_map },
-        { CommandOpcode::MemoryUnmap, cmd_handle_memory_unmap },
-        { CommandOpcode::Draw, cmd_handle_draw },
-        { CommandOpcode::TransferCopy, cmd_handle_transfer_copy },
-        { CommandOpcode::TransferDownscale, cmd_handle_transfer_downscale },
-        { CommandOpcode::TransferFill, cmd_handle_transfer_fill },
-        { CommandOpcode::Nop, cmd_handle_nop },
-        { CommandOpcode::SetState, cmd_handle_set_state },
-        { CommandOpcode::SignalSyncObject, cmd_handle_signal_sync_object },
-        { CommandOpcode::WaitSyncObject, cmd_handle_wait_sync_object },
-        { CommandOpcode::SignalNotification, cmd_handle_notification },
-        { CommandOpcode::SetScreenFilter, cmd_handle_set_screen_filter },
-        { CommandOpcode::NewFrame, cmd_new_frame },
-        { CommandOpcode::DestroyRenderTarget, cmd_handle_destroy_render_target },
-        { CommandOpcode::DestroyContext, cmd_handle_destroy_context }
-    };
+    // Dense enum IDs allow direct dispatch without a tree search per command.
+    static constexpr auto handlers = [] {
+        std::array<CommandHandlerFunc *, static_cast<size_t>(CommandOpcode::Count)> table{};
+        table[static_cast<size_t>(CommandOpcode::SetContext)] = cmd_handle_set_context;
+        table[static_cast<size_t>(CommandOpcode::SyncSurfaceData)] = cmd_handle_sync_surface_data;
+        table[static_cast<size_t>(CommandOpcode::MidSceneFlush)] = cmd_handle_mid_scene_flush;
+        table[static_cast<size_t>(CommandOpcode::CreateContext)] = cmd_handle_create_context;
+        table[static_cast<size_t>(CommandOpcode::CreateRenderTarget)] = cmd_handle_create_render_target;
+        table[static_cast<size_t>(CommandOpcode::MemoryMap)] = cmd_handle_memory_map;
+        table[static_cast<size_t>(CommandOpcode::MemoryUnmap)] = cmd_handle_memory_unmap;
+        table[static_cast<size_t>(CommandOpcode::Draw)] = cmd_handle_draw;
+        table[static_cast<size_t>(CommandOpcode::TransferCopy)] = cmd_handle_transfer_copy;
+        table[static_cast<size_t>(CommandOpcode::TransferDownscale)] = cmd_handle_transfer_downscale;
+        table[static_cast<size_t>(CommandOpcode::TransferFill)] = cmd_handle_transfer_fill;
+        table[static_cast<size_t>(CommandOpcode::Nop)] = cmd_handle_nop;
+        table[static_cast<size_t>(CommandOpcode::SetState)] = cmd_handle_set_state;
+        table[static_cast<size_t>(CommandOpcode::SignalSyncObject)] = cmd_handle_signal_sync_object;
+        table[static_cast<size_t>(CommandOpcode::WaitSyncObject)] = cmd_handle_wait_sync_object;
+        table[static_cast<size_t>(CommandOpcode::SignalNotification)] = cmd_handle_notification;
+        table[static_cast<size_t>(CommandOpcode::SetScreenFilter)] = cmd_handle_set_screen_filter;
+        table[static_cast<size_t>(CommandOpcode::NewFrame)] = cmd_new_frame;
+        table[static_cast<size_t>(CommandOpcode::DestroyRenderTarget)] = cmd_handle_destroy_render_target;
+        table[static_cast<size_t>(CommandOpcode::DestroyContext)] = cmd_handle_destroy_context;
+        return table;
+    }();
+    static_assert([] {
+        for (auto handler : handlers) {
+            if (!handler)
+                return false;
+        }
+        return true;
+    }(),
+        "Every renderer command must have a handler");
 
     Command *cmd = command_list.first;
 
@@ -116,12 +128,12 @@ static void process_batch(renderer::State &state, const FeatureState &features, 
             break;
         }
 
-        auto handler = handlers.find(cmd->opcode);
-        if (handler == handlers.end()) {
+        const auto index = static_cast<size_t>(cmd->opcode);
+        if (index >= handlers.size()) {
             LOG_ERROR("Unimplemented command opcode {}", static_cast<int>(cmd->opcode));
         } else {
             CommandHelper helper(cmd);
-            handler->second(state, mem, config, helper, features, command_list.context);
+            handlers[index](state, mem, config, helper, features, command_list.context);
         }
 
         Command *last_cmd = cmd;
@@ -197,6 +209,7 @@ static void render_loop(renderer::State &state, DisplayState &display, GxmState 
     auto metrics_window_start = next_frame_deadline;
     uint64_t metrics_frames = 0;
     double metrics_frame_ms = 0.0;
+    double metrics_batch_ms = 0.0;
     uint64_t metrics_draw_calls_start = state.draw_calls.load(std::memory_order_relaxed);
 #endif
     if (state.precompile_requested) {
@@ -288,7 +301,15 @@ static void render_loop(renderer::State &state, DisplayState &display, GxmState 
             state.trim_caches_for_memory_pressure();
 #endif
 
+#ifdef VITA3K_PLATFORM_IOS
+        const auto batch_start = std::chrono::steady_clock::now();
+#endif
         process_batches(state, state.features, mem, config, 500);
+#ifdef VITA3K_PLATFORM_IOS
+        // Includes guest/queue waits and command processing, not just present.
+        const auto batch_end = std::chrono::steady_clock::now();
+        metrics_batch_ms += std::chrono::duration<double, std::milli>(batch_end - batch_start).count();
+#endif
 
         if (state.render_abort.load(std::memory_order_relaxed))
             break;
@@ -336,8 +357,8 @@ static void render_loop(renderer::State &state, DisplayState &display, GxmState 
             const double avg_frame_ms = metrics_frames ? metrics_frame_ms / static_cast<double>(metrics_frames) : 0.0;
             const double draws_per_frame = metrics_frames ? static_cast<double>(metrics_draw_calls) / static_cast<double>(metrics_frames) : 0.0;
             const auto pressure = vita3k_ios::sample_runtime_pressure();
-            LOG_INFO("iOS frame metrics: avg_fps={:.2f} avg_frame_latency_ms={:.2f} draw_calls_per_frame={:.1f} frames={} thermal={} rss={} MiB available={} MiB pressure={}%",
-                fps, avg_frame_ms, draws_per_frame, metrics_frames,
+            LOG_INFO("iOS frame metrics: avg_fps={:.2f} avg_present_ms={:.2f} avg_batch_ms={:.2f} draw_calls_per_frame={:.1f} frames={} thermal={} rss={} MiB available={} MiB pressure={}%",
+                fps, avg_frame_ms, metrics_frames ? metrics_batch_ms / static_cast<double>(metrics_frames) : 0.0, draws_per_frame, metrics_frames,
                 vita3k_ios::ThermalThrottleManager::state_name(pressure.thermal),
                 pressure.rss_mb, pressure.available_mb, pressure.memory_pressure);
             // Proactive GC on A11: do not wait for critical. Request trim
@@ -349,6 +370,7 @@ static void render_loop(renderer::State &state, DisplayState &display, GxmState 
             metrics_window_start = metrics_now;
             metrics_frames = 0;
             metrics_frame_ms = 0.0;
+            metrics_batch_ms = 0.0;
             metrics_draw_calls_start = draw_calls;
         }
 #endif

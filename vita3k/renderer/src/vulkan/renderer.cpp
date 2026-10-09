@@ -1047,7 +1047,7 @@ void VKState::late_init(const Config &cfg, const std::string_view game_id, MemSt
     if (!features.enable_memory_mapping) {
         features.support_unmapped_surface_sync = true;
         LOG_INFO("iOS: surface sync uses staging-buffer readback (no memory mapping); disable-surface-sync={}",
-            cfg.current_config.disable_surface_sync && !cfg.current_config.high_accuracy);
+            cfg.current_config.disable_surface_sync);
     }
 #endif
 

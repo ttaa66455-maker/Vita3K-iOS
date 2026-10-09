@@ -35,6 +35,8 @@
 
 #include <config/state.h>
 
+#include <array>
+
 namespace renderer {
 COMMAND_SET_STATE(region_clip) {
     TRACY_FUNC_COMMANDS_SET_STATE(region_clip);
@@ -537,32 +539,43 @@ COMMAND(handle_set_state) {
     renderer::GXMState gxm_state_to_set = helper.pop<renderer::GXMState>();
     using StateChangeHandlerFunc = decltype(cmd_set_state_region_clip);
 
-    static const std::map<renderer::GXMState, StateChangeHandlerFunc *> handlers = {
-        { GXMState::RegionClip, cmd_set_state_region_clip },
-        { GXMState::Program, cmd_set_state_program },
-        { GXMState::Viewport, cmd_set_state_viewport },
-        { GXMState::DepthBias, cmd_set_state_depth_bias },
-        { GXMState::DepthFunc, cmd_set_state_depth_func },
-        { GXMState::DepthWriteEnable, cmd_set_state_depth_write_enable },
-        { GXMState::PolygonMode, cmd_set_state_polygon_mode },
-        { GXMState::PointLineWidth, cmd_set_state_point_line_width },
-        { GXMState::StencilFunc, cmd_set_state_stencil_func },
-        { GXMState::Texture, cmd_set_state_texture },
-        { GXMState::StencilRef, cmd_set_state_stencil_ref },
-        { GXMState::TwoSided, cmd_set_state_two_sided },
-        { GXMState::CullMode, cmd_set_state_cull_mode },
-        { GXMState::VertexStream, cmd_set_state_vertex_stream },
-        { GXMState::UniformBuffer, cmd_set_state_uniform_buffer },
-        { GXMState::FragmentProgramEnable, cmd_set_state_fragment_program_enable },
-        { GXMState::VisibilityBuffer, cmd_set_state_visibility_buffer },
-        { GXMState::VisibilityIndex, cmd_set_state_visibility_index }
-    };
+    // Dense enum IDs allow direct dispatch without a tree search per command.
+    static constexpr auto handlers = [] {
+        std::array<StateChangeHandlerFunc *, static_cast<size_t>(GXMState::TotalState)> table{};
+        table[static_cast<size_t>(GXMState::RegionClip)] = cmd_set_state_region_clip;
+        table[static_cast<size_t>(GXMState::Program)] = cmd_set_state_program;
+        table[static_cast<size_t>(GXMState::Viewport)] = cmd_set_state_viewport;
+        table[static_cast<size_t>(GXMState::DepthBias)] = cmd_set_state_depth_bias;
+        table[static_cast<size_t>(GXMState::DepthFunc)] = cmd_set_state_depth_func;
+        table[static_cast<size_t>(GXMState::DepthWriteEnable)] = cmd_set_state_depth_write_enable;
+        table[static_cast<size_t>(GXMState::PolygonMode)] = cmd_set_state_polygon_mode;
+        table[static_cast<size_t>(GXMState::PointLineWidth)] = cmd_set_state_point_line_width;
+        table[static_cast<size_t>(GXMState::StencilFunc)] = cmd_set_state_stencil_func;
+        table[static_cast<size_t>(GXMState::Texture)] = cmd_set_state_texture;
+        table[static_cast<size_t>(GXMState::StencilRef)] = cmd_set_state_stencil_ref;
+        table[static_cast<size_t>(GXMState::TwoSided)] = cmd_set_state_two_sided;
+        table[static_cast<size_t>(GXMState::CullMode)] = cmd_set_state_cull_mode;
+        table[static_cast<size_t>(GXMState::VertexStream)] = cmd_set_state_vertex_stream;
+        table[static_cast<size_t>(GXMState::UniformBuffer)] = cmd_set_state_uniform_buffer;
+        table[static_cast<size_t>(GXMState::FragmentProgramEnable)] = cmd_set_state_fragment_program_enable;
+        table[static_cast<size_t>(GXMState::VisibilityBuffer)] = cmd_set_state_visibility_buffer;
+        table[static_cast<size_t>(GXMState::VisibilityIndex)] = cmd_set_state_visibility_index;
+        return table;
+    }();
+    static_assert([] {
+        for (auto handler : handlers) {
+            if (!handler)
+                return false;
+        }
+        return true;
+    }(),
+        "Every renderer command must have a handler");
 
-    auto result = handlers.find(gxm_state_to_set);
+    const auto index = static_cast<size_t>(gxm_state_to_set);
 
-    if (result != handlers.end()) {
+    if (index < handlers.size()) {
         // LOG_TRACE("State set: {}", (int)gxm_state_to_set);
-        result->second(renderer, mem, config, helper, render_context);
+        handlers[index](renderer, mem, config, helper, render_context);
     } else {
         LOG_ERROR("Unknown state set command {}", static_cast<uint16_t>(gxm_state_to_set));
     }
