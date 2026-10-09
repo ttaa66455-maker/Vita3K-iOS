@@ -246,12 +246,12 @@ void MotionInput::UpdateBasicOrientation() {
         basic_orientation_base = basic_orientation;
     } else if (std::abs(unit_accel.z) < max_angle_threshold_sin || !basic_orientation_base.z) {
         unit_xy = unit_xy.Normalized();
-        if (basic_orientation.z && std::abs(unit_accel.x) >= std::abs(unit_accel.y) || std::abs(unit_xy.x) > max_angle_threshold_cos) {
+        if ((basic_orientation.z && std::abs(unit_accel.x) >= std::abs(unit_accel.y)) || std::abs(unit_xy.x) > max_angle_threshold_cos) {
             basic_orientation.x = accel.x > 0 ? -1.0f : 1.0f;
             basic_orientation.y = 0.0f;
             basic_orientation.z = 0.0f;
             basic_orientation_base = basic_orientation;
-        } else if (basic_orientation.z && std::abs(unit_accel.x) < std::abs(unit_accel.y) || std::abs(unit_xy.y) > max_angle_threshold_cos) {
+        } else if ((basic_orientation.z && std::abs(unit_accel.x) < std::abs(unit_accel.y)) || std::abs(unit_xy.y) > max_angle_threshold_cos) {
             basic_orientation.x = 0.0f;
             basic_orientation.y = accel.y > 0 ? -1.0f : 1.0f;
             basic_orientation.z = 0.0f;

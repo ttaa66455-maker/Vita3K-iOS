@@ -14,6 +14,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
 endif()
 
 if(VITA3K_BUILD_IOS_UPSTREAM_CORE)
+	# vcpkg supplies BoostConfig.cmake, and Apple's linker can deduplicate
+	# static libraries without repeating every transitive dependency.
+	foreach(policy IN ITEMS CMP0156 CMP0167 CMP0179)
+		if(POLICY ${policy})
+			cmake_policy(SET ${policy} NEW)
+			set(CMAKE_POLICY_DEFAULT_${policy} NEW)
+		endif()
+	endforeach()
 	if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
 		message(FATAL_ERROR "VITA3K_BUILD_IOS_UPSTREAM_CORE requires an iOS toolchain.")
 	endif()

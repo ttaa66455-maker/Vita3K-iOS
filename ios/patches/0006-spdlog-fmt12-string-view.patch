@@ -1,0 +1,26 @@
+diff --git a/include/spdlog/common.h b/include/spdlog/common.h
+index 71ffd240..5df937d2 100644
+--- a/include/spdlog/common.h
++++ b/include/spdlog/common.h
+@@ -372,6 +372,21 @@ SPDLOG_CONSTEXPR_FUNC std::basic_string_view<T> to_string_view(
+ }
+ #endif
+ 
++// fmt 12 deprecates implicit format-string conversion. Keep compile-time
++// format checking while explicitly obtaining the view passed to the logger.
++#if !defined(SPDLOG_USE_STD_FORMAT) && FMT_VERSION >= 120000
++template <typename... Args>
++inline spdlog::string_view_t to_string_view(fmt::fstring<Args...> format) SPDLOG_NOEXCEPT {
++    return format.get();
++}
++#if defined(SPDLOG_WCHAR_FILENAMES) || defined(SPDLOG_WCHAR_TO_UTF8_SUPPORT)
++template <typename... Args>
++inline spdlog::wstring_view_t to_string_view(fmt::basic_fstring<wchar_t, Args...> format) SPDLOG_NOEXCEPT {
++    return format.get();
++}
++#endif
++#endif
++
+ // make_unique support for pre c++14
+ #if __cplusplus >= 201402L  // C++14 and beyond
+ using std::enable_if_t;

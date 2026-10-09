@@ -430,7 +430,7 @@ EXPORT(SceUInt32, sceNetHtonl, SceUInt32 n) {
 
 EXPORT(SceUInt64, sceNetHtonll, SceUInt64 n) {
     TRACY_FUNC(sceNetHtonll, n);
-    return HTONLL(n);
+    return SCE_NET_HTONLL(n);
 }
 
 EXPORT(SceUInt16, sceNetHtons, SceUInt16 n) {
@@ -505,7 +505,7 @@ EXPORT(SceUInt32, sceNetNtohl, SceUInt32 n) {
 
 EXPORT(SceUInt64, sceNetNtohll, SceUInt64 n) {
     TRACY_FUNC(sceNetNtohll, n);
-    return NTOHLL(n);
+    return SCE_NET_NTOHLL(n);
 }
 
 EXPORT(SceUInt16, sceNetNtohs, SceUInt16 n) {

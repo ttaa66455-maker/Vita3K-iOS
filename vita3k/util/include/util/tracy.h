@@ -25,14 +25,14 @@
 
 // universal to string converters for module specific types (usually enums)
 template <typename T>
-std::string to_debug_str(const MemState &mem, T type) {
+std::string to_debug_str(const MemState &, T type) {
     std::ostringstream datass;
     datass << type;
     return std::move(datass).str();
 }
 
 template <fmt::formattable T>
-std::string to_debug_str(const MemState &mem, T type) {
+std::string to_debug_str(const MemState &, T type) {
     return fmt::format("{}", type);
 }
 
@@ -44,7 +44,7 @@ std::string to_debug_str(const MemState &mem, U *type) {
 
 // Override for guest pointers, we want to print the guest address
 template <typename U>
-std::string to_debug_str(const MemState &mem, Ptr<U> type) {
+std::string to_debug_str(const MemState &, Ptr<U> type) {
     return log_hex(type.address());
 }
 
@@ -68,11 +68,11 @@ inline std::string to_debug_str(const MemState &mem, const char *type) {
 }
 
 template <>
-inline std::string to_debug_str<std::string>(const MemState &mem, std::string type) {
+inline std::string to_debug_str<std::string>(const MemState &, std::string type) {
     return type;
 }
 
-inline std::string to_debug_str(const MemState &mem) {
+inline std::string to_debug_str(const MemState &) {
     return "";
 }
 

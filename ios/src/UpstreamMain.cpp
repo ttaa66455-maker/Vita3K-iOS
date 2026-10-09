@@ -2791,7 +2791,7 @@ bool prepare_ios_jit_pool() {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int, char *[]) {
     Root root_paths;
     std::unique_ptr<EmuEnvState> emuenv;
 

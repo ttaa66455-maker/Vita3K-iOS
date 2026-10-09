@@ -206,7 +206,7 @@ struct State {
     virtual int get_max_anisotropic_filtering() = 0;
     virtual void set_anisotropic_filtering(int anisotropic_filtering) = 0;
     virtual int get_max_2d_texture_width() = 0;
-    virtual void set_async_compilation(bool enable) {}
+    virtual void set_async_compilation(bool) {}
     void set_surface_sync_state(bool disable) {
         disable_surface_sync = disable;
     }
@@ -223,10 +223,10 @@ struct State {
     void set_fullscreen(bool enable) {
         fullscreen = enable;
     }
-    virtual bool map_memory(MemState &mem, Ptr<void> address, uint32_t size) {
+    virtual bool map_memory(MemState &, Ptr<void>, uint32_t) {
         return true;
     }
-    virtual void unmap_memory(MemState &mem, Ptr<void> address) {}
+    virtual void unmap_memory(MemState &, Ptr<void>) {}
 #ifdef __ANDROID__
     virtual bool support_custom_drivers() {
         return false;

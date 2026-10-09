@@ -75,11 +75,11 @@ public:
     virtual ~AudioAdapter() = default;
 
     virtual bool init() = 0;
-    virtual AudioOutPortPtr open_port(int nb_channels, int freq, int nb_sample) { return nullptr; }
-    virtual void audio_output(AudioOutPort &out_port, const void *buffer) {}
-    virtual void set_volume(AudioOutPort &out_port, float volume) {}
-    virtual void switch_state(const bool pause) {}
-    virtual int get_rest_sample(AudioOutPort &out_port) { return 0; };
+    virtual AudioOutPortPtr open_port(int, int, int) { return nullptr; }
+    virtual void audio_output(AudioOutPort &, const void *) {}
+    virtual void set_volume(AudioOutPort &, float) {}
+    virtual void switch_state(const bool) {}
+    virtual int get_rest_sample(AudioOutPort &) { return 0; };
     virtual void wake_all_ports() {}
     friend struct AudioState;
 };
@@ -104,11 +104,11 @@ struct AudioState {
     void deinit();
     void stop_all_ports();
     void set_backend(const std::string &adapter_name);
-    AudioOutPortPtr open_port(int nb_channels, int freq, int nb_sample);
+    AudioOutPortPtr open_port(int, int, int);
     void audio_output(AudioOutPort &out_port, const void *buffer);
     void set_volume(AudioOutPort &out_port, float volume);
     void set_global_volume(float volume);
     void switch_state(const bool pause);
-    int get_rest_sample(AudioOutPort &out_port);
+    int get_rest_sample(AudioOutPort &);
     void wake_all_ports();
 };

@@ -285,7 +285,7 @@ bool parseHeaders(std::string &headersRaw, HeadersMapType &headersOut) {
             return false; // separator is missing, the header is invalid
 
         auto name = line.substr(0, line.find(':'));
-        int valueStart = name.length() + 1;
+        size_t valueStart = name.length() + 1;
         if (line.find(": ") != std::string_view::npos)
             // Theres a space between semicolon and value, trim it
             valueStart++;

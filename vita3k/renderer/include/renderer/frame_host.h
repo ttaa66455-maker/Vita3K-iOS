@@ -71,7 +71,7 @@ public:
         return false;
     }
 
-    virtual void *get_proc_address(const char *name) const {
+    virtual void *get_proc_address(const char *) const {
         return nullptr;
     }
 
@@ -89,7 +89,7 @@ public:
     virtual void swap_buffers() {
     }
 
-    virtual bool set_vsync(bool enabled) {
+    virtual bool set_vsync(bool) {
         return false;
     }
 

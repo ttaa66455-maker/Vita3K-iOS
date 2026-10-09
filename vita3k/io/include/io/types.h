@@ -88,7 +88,7 @@ enum SceIoSeekMode {
 };
 
 template <>
-inline std::string to_debug_str<SceIoSeekMode>(const MemState &mem, SceIoSeekMode type) {
+inline std::string to_debug_str<SceIoSeekMode>(const MemState &, SceIoSeekMode type) {
     switch (type) {
     case SCE_SEEK_SET: return "SCE_SEEK_SET";
     case SCE_SEEK_CUR: return "SCE_SEEK_CUR";

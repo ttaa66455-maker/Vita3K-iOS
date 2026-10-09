@@ -299,7 +299,9 @@ if(VITA3K_BUILD_IOS_UPSTREAM_CORE)
 	find_package(FFMPEG REQUIRED)
 	add_library(ffmpeg INTERFACE)
 	target_include_directories(ffmpeg INTERFACE ${FFMPEG_INCLUDE_DIRS})
-	target_link_directories(ffmpeg INTERFACE ${FFMPEG_LIBRARY_DIRS})
+	# FindFFMPEG supplies absolute library paths (plus system frameworks/libs).
+	# Search directories cause Xcode to add nonexistent Release-iphoneos
+	# subdirectories to the vcpkg lib and debug/lib paths.
 	target_link_libraries(ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
 else()
 	add_subdirectory(ffmpeg)

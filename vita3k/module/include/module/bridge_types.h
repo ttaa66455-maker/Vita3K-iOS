@@ -26,7 +26,7 @@ template <typename HostType>
 struct BridgeTypes {
     typedef HostType ArmType;
 
-    static HostType arm_to_host(const ArmType &t, const MemState &mem) {
+    static HostType arm_to_host(const ArmType &t, const MemState &) {
         return t;
     }
 };

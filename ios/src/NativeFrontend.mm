@@ -472,7 +472,7 @@ NSString *display_title(NSString *identifier, NSString *original) {
 // Untinted Regular glass. Apple's guidance is to tint the *primary action*
 // only — a global wash applied to every surface flattens the hierarchy and
 // fights the material's own adaptive tinting, so the former white/black wash
-// is gone. Use glass_effect_tinted() for the one call-to-action per screen.
+// is gone.
 //
 // Both variants are cached: UIGlassEffect instances are immutable once
 // configured and a UIVisualEffectView rebuilds its whole backdrop when -effect
@@ -502,20 +502,6 @@ UIVisualEffect *glass_effect(const BOOL interactive = YES) {
 BOOL in_game_liquid_glass_enabled() {
     NSNumber *value = [NSUserDefaults.standardUserDefaults objectForKey:@"tsubomi.liquidGlassInGame"];
     return value == nil ? YES : value.boolValue;
-}
-
-// Tinted glass for the one element per screen that should stand out. Callers
-// pass `interactive` only for a control the user actually presses; static
-// banners leave it off so they cost a single composite instead of a live
-// refraction pass.
-UIVisualEffect *glass_effect_tinted(UIColor *tint, const BOOL interactive = NO) {
-    if (@available(iOS 26.0, *)) {
-        UIGlassEffect *effect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
-        effect.interactive = interactive;
-        effect.tintColor = tint;
-        return effect;
-    }
-    return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
 }
 
 // Liquid Glass shapes use continuous ("squircle") corners, not circular arcs.

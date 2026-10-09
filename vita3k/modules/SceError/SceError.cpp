@@ -17,11 +17,13 @@
 
 #include "SceError.h"
 
+#include <cstdio>
+
 TRACY_MODULE_NAME(SceError);
 
 EXPORT(SceInt32, _sceErrorGetExternalString, char *result, uint32_t err) {
     TRACY_FUNC(_sceErrorGetExternalString, result, err);
-    sprintf(result, "0x%08X", err);
+    std::snprintf(result, 11, "0x%08X", err);
     return 0;
 }
 
