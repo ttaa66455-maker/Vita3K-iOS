@@ -242,13 +242,15 @@ void VKTextureCache::trim_textures(const VKContext &context, bool memory_pressur
         if (!bound(context.vertex_textures) && !bound(context.fragment_textures))
             candidates.push_back(i);
     }
-    std::sort(candidates.begin(), candidates.end(), [&](size_t a, size_t b) {
+    // At most eight images are retired per frame; only order that oldest prefix.
+    const size_t eviction_limit = std::min<size_t>(candidates.size(), 8);
+    std::partial_sort(candidates.begin(), candidates.begin() + eviction_limit, candidates.end(), [&](size_t a, size_t b) {
         return textures[a].last_used_frame < textures[b].last_used_frame;
     });
     uint64_t released = 0;
     size_t evicted = 0;
     for (const auto index : candidates) {
-        if (resident <= budget || evicted == 8)
+        if (resident <= budget || evicted == eviction_limit)
             break;
         auto &entry = textures[index];
         auto &info = texture_queue.items[index].content;

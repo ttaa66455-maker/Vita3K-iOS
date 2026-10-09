@@ -105,6 +105,26 @@ int main() {
     cache.trim_textures(context, true);
     assert(cache.texture_lookup.contains(info.texture));
     assert(cache.textures[6].texture.view == 77);
+
+    // Candidate order differs from age order. Evict only the eight oldest,
+    // then stop at the budget on the next call, even with fewer than eight left.
+    VKTextureCache ordered;
+    const std::array<uint64_t, 16> ages{9, 3, 16, 1, 12, 7, 14, 5, 10, 2, 15, 8, 11, 4, 13, 6};
+    VKContext unbound;
+    for (size_t i = 0; i < ages.size(); ++i) ordered.textures[i].last_used_frame = ages[i];
+    ordered.trim_textures(unbound, false);
+    assert((ordered.texture_queue.retired == std::vector<uint32_t>{4, 10, 2, 14, 8, 16, 6, 12}));
+    ordered.trim_textures(unbound, false);
+    assert((ordered.texture_queue.retired == std::vector<uint32_t>{4, 10, 2, 14, 8, 16, 6, 12, 1, 9}));
+
+    // Over-budget caches can have no eligible candidates, or just one.
+    VKTextureCache limited;
+    for (auto &entry : limited.textures) entry.last_used_frame = unbound.frame_timestamp;
+    limited.trim_textures(unbound, false);
+    assert(limited.texture_queue.retired.empty());
+    limited.textures[15].last_used_frame = 1;
+    limited.trim_textures(unbound, false);
+    assert((limited.texture_queue.retired == std::vector<uint32_t>{16}));
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:
