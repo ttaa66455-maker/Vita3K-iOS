@@ -3,6 +3,7 @@
 // Implemented as Objective-C++ so we can read NSProcessInfo.thermalState and
 // Mach task info without pulling UIKit into every translation unit.
 
+#include <vita3k_ios/MemoryReclaim.h>
 #include <vita3k_ios/PerformanceOptimizations.h>
 
 #include <util/log.h>
@@ -19,7 +20,7 @@
 namespace vita3k_ios {
 namespace {
 
-std::atomic<bool> g_gc_requested{ false };
+MemoryReclaimRequests g_gc_requests;
 
 uint64_t task_rss_bytes() {
     task_vm_info_data_t info{};
@@ -70,13 +71,16 @@ bool MemoryMonitor::is_memory_critical() {
 }
 
 void MemoryMonitor::request_gc() {
-    g_gc_requested.store(true, std::memory_order_release);
+    if (!g_gc_requests.request())
+        return;
     LOG_WARN("iOS MemoryMonitor: GC requested (rss={} MiB, available={} MiB)",
         get_rss_mb(), get_available_bytes() / (1024 * 1024));
 }
 
 bool MemoryMonitor::consume_gc_request() {
-    return g_gc_requested.exchange(false, std::memory_order_acq_rel);
+    if (!g_gc_requests.has_pending())
+        return false;
+    return g_gc_requests.consume(MemoryReclaimRequests::Clock::now(), get_available_bytes());
 }
 
 ThermalThrottleManager::ThermalState ThermalThrottleManager::get_thermal_state() {

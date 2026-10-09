@@ -88,7 +88,7 @@ public:
     /** Hint the runtime to drop non-essential caches (shader/texture soft). */
     static void request_gc();
 
-    /** Atomically consume a pending memory-pressure GC request. */
+    /** Render-thread only: consume a request, coalescing bursts when headroom permits. */
     static bool consume_gc_request();
 };
 

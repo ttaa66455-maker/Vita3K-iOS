@@ -121,3 +121,10 @@ set_tests_properties(startup_stability_tests PROPERTIES TIMEOUT 30)
 
 add_test(NAME renderer_dispatch_tests COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/RendererDispatchTests.py ${CMAKE_CXX_COMPILER})
 set_tests_properties(renderer_dispatch_tests PROPERTIES TIMEOUT 30)
+
+add_executable(memory_reclaim_tests MemoryReclaimTests.cpp)
+target_compile_features(memory_reclaim_tests PRIVATE cxx_std_17)
+target_include_directories(memory_reclaim_tests PRIVATE ../include)
+target_link_libraries(memory_reclaim_tests PRIVATE Threads::Threads)
+add_test(NAME memory_reclaim_tests COMMAND memory_reclaim_tests)
+set_tests_properties(memory_reclaim_tests PROPERTIES TIMEOUT 15)
