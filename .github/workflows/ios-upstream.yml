@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build portable support tests with assertions enabled
         run: |
           cmake -S ios/tests -B build-native-tests -DCMAKE_BUILD_TYPE=Debug
@@ -64,7 +64,7 @@ jobs:
 
     steps:
       - name: Check out source and upstream dependencies
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           submodules: recursive
