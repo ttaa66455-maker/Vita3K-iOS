@@ -147,14 +147,24 @@ bool AppSessionController::load_and_run() {
     emuenv.renderer->set_app(emuenv.io.title_id.c_str(), emuenv.self_name.c_str());
     prepare_game_launch_overlay(emuenv);
 
+#ifndef VITA3K_PLATFORM_IOS
     if (run_app(emuenv, main_module_id, active_launch_request) != Success)
         return false;
+#endif
 
     frame_host->get().prepare_for_render_thread();
 
     renderer::start_render_thread(*emuenv.renderer, emuenv.display, emuenv.gxm, emuenv.mem, emuenv.cfg);
 
     frame_host->get().finalize_render_thread_start();
+
+#ifdef VITA3K_PLATFORM_IOS
+    // run_app synchronously executes library module_start functions. They may
+    // submit GXM commands and wait for completion, so the consumer must already
+    // be running. A failed launch still owns the renderer until stop() joins it.
+    if (run_app(emuenv, main_module_id, active_launch_request) != Success)
+        return false;
+#endif
 
     set_phase(AppSessionPhase::Running);
     return true;

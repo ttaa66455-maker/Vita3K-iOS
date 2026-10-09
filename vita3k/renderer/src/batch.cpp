@@ -216,7 +216,20 @@ static void render_loop(renderer::State &state, DisplayState &display, GxmState 
         // Present progress at most 30 times per second. Presenting every cache
         // entry turns a cheap shader-module load into a full vsync wait.
         auto next_progress_frame = std::chrono::steady_clock::now();
+#ifdef VITA3K_PLATFORM_IOS
+        // Warmup is optional: leave room for guest startup and on-demand shader
+        // loads on memory-constrained phones. Do not hold queued GXM work behind
+        // an entire persistent shader cache on every launch.
+        const auto precompile_deadline = next_progress_frame + std::chrono::seconds(2);
+#endif
         for (int i = 0; i < total && !state.render_abort.load(std::memory_order_relaxed); ++i) {
+#ifdef VITA3K_PLATFORM_IOS
+            if (std::chrono::steady_clock::now() >= precompile_deadline
+                || vita3k_ios::MemoryMonitor::get_memory_pressure() >= 50) {
+                LOG_INFO("iOS shader warmup deferred: loaded={} total={}; remaining shaders load on demand", i, total);
+                break;
+            }
+#endif
             if (!state.set_current())
                 break;
 

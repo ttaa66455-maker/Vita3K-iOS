@@ -42,8 +42,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  native-support-tests:
+    name: iOS startup and runtime regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build portable support tests with assertions enabled
+        run: |
+          cmake -S ios/tests -B build-native-tests -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-native-tests --parallel 2
+          ctest --test-dir build-native-tests --output-on-failure --parallel 2
+
   unsigned-ipa:
     name: Upstream core arm64 device link
+    needs: native-support-tests
     runs-on: macos-15
     # Cap wall time so a stuck vcpkg/Xcode step cannot hold a scarce macos-15
     # runner for three hours and starve the next build.
@@ -169,6 +182,30 @@ jobs:
 
       - name: Package and verify unsigned IPA
         run: |
+          # Check both the bundle and linked binary: a newer SDK must not
+          # silently raise the deployment floor above the A11's iOS 16.
+          python3 - <<'PY'
+          import pathlib
+          import plistlib
+          import re
+          import subprocess
+
+          app = pathlib.Path("build-ios-upstream/ios/Release-iphoneos/Vita3K-iOS.app")
+          with (app / "Info.plist").open("rb") as stream:
+              info = plistlib.load(stream)
+          def version(value):
+              parts = tuple(map(int, value.split(".")))
+              return parts + (0,) * (3 - len(parts))
+          if version(info["MinimumOSVersion"]) > (16, 0, 0) or 1 not in info["UIDeviceFamily"]:
+              raise SystemExit("App bundle is not compatible with iOS 16 iPhones")
+          binary = app / info["CFBundleExecutable"]
+          subprocess.run(["lipo", "-verify_arch", "arm64", str(binary)], check=True)
+          build_info = subprocess.check_output(["xcrun", "vtool", "-show-build", str(binary)], text=True)
+          minimums = re.findall(r"platform\s+IOS\s+minos\s+([0-9.]+)", build_info)
+          if not minimums or any(version(value) > (16, 0, 0) for value in minimums):
+              raise SystemExit("Linked executable does not target iOS 16 devices")
+          print("Verified arm64 iPhone binary and iOS 16 deployment target")
+          PY
           mkdir -p artifacts
           bash ./.ci/package-ios.sh \
             --build-dir build-ios-upstream \
@@ -182,3 +219,15 @@ jobs:
           path: artifacts/Vita3K-upstream-core-iOS-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-core-build-diagnostics-${{ github.sha }}
+          path: |
+            build-ios-upstream/CMakeFiles/CMakeConfigureLog.yaml
+            build-ios-upstream/vcpkg-manifest-install.log
+            build-ios-upstream/vcpkg_installed/vcpkg/issue_body.md
+          if-no-files-found: ignore
+          retention-days: 7
