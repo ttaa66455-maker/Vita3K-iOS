@@ -19,6 +19,7 @@
 
 #if defined(VITA3K_PLATFORM_IOS)
 #include <cpu/impl/dynarmic_cpu.h>
+#include <cpu/jit_invalidation.h>
 #include <cpu/slot_pool.h>
 #include <cpu/state.h>
 #include <util/log.h>
@@ -39,7 +40,7 @@ struct Worker {
     bool optimized = true;
     bool log_code = false;
     bool log_mem = false;
-    bool invalidated = false;
+    cpu::JitInvalidation invalidations;
 };
 
 struct JitPool {
@@ -56,10 +57,12 @@ struct JitPool {
             workers.size(), get_ios_jit_cache_size() / (1024 * 1024));
     }
 
-    void invalidate() {
+    void invalidate(Address start, size_t length) {
+        if (!length)
+            return;
         for (auto &worker : workers) {
             const std::lock_guard lock(worker->mutex);
-            worker->invalidated = true;
+            worker->invalidations.add(start, length);
             if (worker->cpu)
                 worker->cpu->stop();
         }
@@ -140,10 +143,9 @@ class PooledCPU final : public CPUInterface {
                 worker.cpu->rebind(parent);
                 if (!worker.cpu->ensure_code_cache())
                     return -1;
-                if (worker.invalidated) {
-                    worker.cpu->clear_translation_cache();
-                    worker.invalidated = false;
-                }
+                worker.invalidations.drain(
+                    [&](uint32_t start, std::size_t length) { worker.cpu->invalidate_jit_cache(start, length); },
+                    [&] { worker.cpu->clear_translation_cache(); });
                 worker.cpu->load_context(context);
                 worker.cpu->load_cp15(cp15);
                 worker.cpu->clear_exclusive();
@@ -297,7 +299,7 @@ public:
         const std::lock_guard lock(state_mutex);
         return log_mem;
     }
-    void invalidate_jit_cache(Address, size_t) override { pool->invalidate(); }
+    void invalidate_jit_cache(Address start, size_t length) override { pool->invalidate(start, length); }
     void clear_exclusive() override {} // Cleared on each worker context switch.
     std::size_t processor_id() const override { return guest_core_id; }
 };

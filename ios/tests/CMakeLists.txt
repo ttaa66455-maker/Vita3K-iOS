@@ -128,3 +128,8 @@ target_include_directories(memory_reclaim_tests PRIVATE ../include)
 target_link_libraries(memory_reclaim_tests PRIVATE Threads::Threads)
 add_test(NAME memory_reclaim_tests COMMAND memory_reclaim_tests)
 set_tests_properties(memory_reclaim_tests PROPERTIES TIMEOUT 15)
+
+add_executable(jit_invalidation_tests JitInvalidationTests.cpp)
+target_compile_features(jit_invalidation_tests PRIVATE cxx_std_17)
+target_include_directories(jit_invalidation_tests PRIVATE ../../vita3k/cpu/include)
+add_test(NAME jit_invalidation_tests COMMAND jit_invalidation_tests)

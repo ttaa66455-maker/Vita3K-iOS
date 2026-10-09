@@ -68,8 +68,17 @@ int main(int argc, char **argv) {
     };
     exercise(1);
     *Ptr<uint32_t>(0x10000).get(memory) = 0xe2800002;
-    invalidate_jit_cache(*guests.front(), 0x10000, 4);
+    // Kernel invalidation fans out through every guest sharing this pool.
+    // Queue duplicate and disjoint intervals before any worker resumes.
+    for (auto &guest : guests) {
+        invalidate_jit_cache(*guest, 0x10000, 4);
+        invalidate_jit_cache(*guest, 0x10200, 4);
+    }
     exercise(2);
+    // Overflow fallback must also invalidate already compiled instructions.
+    *Ptr<uint32_t>(0x10000).get(memory) = 0xe2800005;
+    invalidate_jit_cache(*guests.front(), UINT32_MAX, 8);
+    exercise(5);
     *Ptr<uint32_t>(0x10000).get(memory) = 0xeafffffe; // infinite branch must yield a time slice
     invalidate_jit_cache(*guests.front(), 0x10000, 4);
     write_pc(*guests.front(), 0x10000);
